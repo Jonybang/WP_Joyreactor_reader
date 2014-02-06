@@ -17,24 +17,7 @@
 
     <!--LayoutRoot представляет корневую сетку, где размещается все содержимое страницы-->
     <Grid x:Name="LayoutRoot" Background="Transparent">
-        <!--Элемент управления Pivot-->
-        <controls:Pivot Title="МОЕ ПРИЛОЖЕНИЕ">
-            <!--Первый элемент Pivot-->
-            <controls:PivotItem Header="первый">
-                <!--Двухстрочный список с разбивкой текста на строки-->
-                <ListBox x:Name="FirstListBox" Margin="0,0,-12,0" >
-                    
-                </ListBox>
-            </controls:PivotItem>
- 
-            <!--Второй элемент Pivot-->
-            <controls:PivotItem Header="второй"> 
-                <!--Трехстрочный список без разбивки текста на строки-->
-                    <ListBox x:Name="SecondListBox" Margin="0,0,-12,0">
-
-                    </ListBox>
-            </controls:PivotItem>
-        </controls:Pivot>
+        <phone:WebBrowser x:Name="Browser"  />
     </Grid>
  
 </phone:PhoneApplicationPage>

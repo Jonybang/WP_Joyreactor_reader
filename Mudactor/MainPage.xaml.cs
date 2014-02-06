@@ -14,15 +14,14 @@ using System.Text;
 using System.IO;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Xml.Linq;
 
 namespace Mudactor
 {
     public partial class MainPage : PhoneApplicationPage
     {
-        NetworkCredential credentials = new NetworkCredential("<user>", "<password>", "<domain>");
-        HttpWebRequest request = CreateWebRequest("<url>/_vti_bin/Webs.asmx", credentials);
+        NetworkCredential credentials = new NetworkCredential("Jonybang", "Jb192837");
         XDocument soapEnvelope = CreateSoapEnvelope("<GetWebCollection xmlns=\"http://schemas.microsoft.com/sharepoint/soap/\" />");
-        static string soapEnvelope = @"<soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'><soap:Body></soap:Body></soap:Envelope>";
 
         // Конструктор
         public MainPage()
@@ -32,6 +31,9 @@ namespace Mudactor
             // Задайте для контекста данных элемента управления listbox пример данных
             DataContext = App.ViewModel;
             this.Loaded += new RoutedEventHandler(MainPage_Loaded);
+
+            HttpWebRequest request = CreateWebRequest("http://joyreactor.cc/login", credentials);
+
             InsertSoapEnvelopeIntoWebRequest(soapEnvelope, request);
         }
 
@@ -50,12 +52,11 @@ namespace Mudactor
             req.Accept = "text/xml";
             req.Method = "POST";
             return req;
-        }
-
-        
+        }        
 
         private static XDocument CreateSoapEnvelope(string content)
         {
+            string soapEnvelope = @"<soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'><soap:Body></soap:Body></soap:Envelope>";
             StringBuilder sb = new StringBuilder(soapEnvelope);
             sb.Insert(sb.ToString().IndexOf("</soap:Body>"), content);
 
