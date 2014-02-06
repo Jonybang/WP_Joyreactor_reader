@@ -17,7 +17,7 @@
 
     <!--LayoutRoot представляет корневую сетку, где размещается все содержимое страницы-->
     <Grid x:Name="LayoutRoot" Background="Transparent">
-        <phone:WebBrowser x:Name="Browser"  />
+        <phone:WebBrowser  Language="English" x:Name="Browser" Navigated="Browser_Navigated"  />
     </Grid>
  
 </phone:PhoneApplicationPage>

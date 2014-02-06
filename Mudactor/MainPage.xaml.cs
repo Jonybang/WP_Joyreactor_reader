@@ -20,9 +20,7 @@ namespace Mudactor
 {
     public partial class MainPage : PhoneApplicationPage
     {
-        NetworkCredential credentials = new NetworkCredential("Jonybang", "Jb192837");
-        XDocument soapEnvelope = CreateSoapEnvelope("<GetWebCollection xmlns=\"http://schemas.microsoft.com/sharepoint/soap/\" />");
-
+        string AccessToken = "";
         // Конструктор
         public MainPage()
         {
@@ -32,66 +30,81 @@ namespace Mudactor
             DataContext = App.ViewModel;
             this.Loaded += new RoutedEventHandler(MainPage_Loaded);
 
-            HttpWebRequest request = CreateWebRequest("http://joyreactor.cc/login", credentials);
-
-            InsertSoapEnvelopeIntoWebRequest(soapEnvelope, request);
+            var url = "http://m.joyreactor.cc/login";
+            Browser.Navigate(new Uri(url));
         }
 
         // Загрузка данных для элементов ViewModel
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
 
-        }
-        private static HttpWebRequest CreateWebRequest(string url, NetworkCredential credentials)
-        {
-            string action = "http://schemas.microsoft.com/sharepoint/soap/GetWebCollection";
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(url);
-            req.Credentials = credentials;
-            req.Headers["SOAPAction"] = action;
-            req.ContentType = "text/xml;charset=\"utf-8\"";
-            req.Accept = "text/xml";
-            req.Method = "POST";
-            return req;
         }        
 
-        private static XDocument CreateSoapEnvelope(string content)
+        private void Browser_Navigated(object sender, System.Windows.Navigation.NavigationEventArgs e)
         {
-            string soapEnvelope = @"<soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'><soap:Body></soap:Body></soap:Envelope>";
-            StringBuilder sb = new StringBuilder(soapEnvelope);
-            sb.Insert(sb.ToString().IndexOf("</soap:Body>"), content);
-
-            XDocument soapEnvelopeXml = XDocument.Parse(sb.ToString());
-
-            return soapEnvelopeXml;
-        }
-
-        private static void InsertSoapEnvelopeIntoWebRequest(XDocument soapEnvelopeXml, HttpWebRequest webRequest)
-        {
-            webRequest.BeginGetRequestStream((IAsyncResult asynchronousResult) =>
+             if (e.Uri.IsAbsoluteUri)
             {
-                HttpWebRequest request = (HttpWebRequest)asynchronousResult.AsyncState;
-                Stream postStream = request.EndGetRequestStream(asynchronousResult);
-                soapEnvelopeXml.Save(postStream);
-                postStream.Close();
-
-                request.BeginGetResponse(new AsyncCallback(GetResponseCallback), request);
-            }, webRequest);
+                string code = e.Uri.Query.ToString();
+                string[] split = code.Split(new Char[] { '=' });
+                string codeString = split.GetValue(0).ToString();
+                string codeValue = split.GetValue(1).ToString();
+                if (codeValue.Length > 0)
+                {
+                    var url = "http://joyreactor.cc/login" + codeValue;
+ 
+                    //call access token
+                    WebRequest request = WebRequest.Create(url); //FB access token Link
+                    request.BeginGetResponse(new AsyncCallback(this.ResponseCallback_AccessToken), request);
+                }
+            }
+            else
+                return;
         }
 
-        private static void GetResponseCallback(IAsyncResult asynchronousResult)
+        private void ResponseCallback_AccessToken(IAsyncResult asynchronousResult)
         {
-            HttpWebRequest request = (HttpWebRequest)asynchronousResult.AsyncState;
-            HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(asynchronousResult);
-            Stream streamResponse = response.GetResponseStream();
-            StreamReader streamRead = new StreamReader(streamResponse);
-            string responseString = streamRead.ReadToEnd();
+            try
+            {
+                var request = (HttpWebRequest)asynchronousResult.AsyncState;
+                using (var resp = (HttpWebResponse)request.EndGetResponse(asynchronousResult))
+                {
+                    using (var streamResponse = resp.GetResponseStream())
+                    {
+                        using (var streamRead = new StreamReader(streamResponse))
+                        {
+                            string responseString = streamRead.ReadToEnd();
+                            string[] splitAccessToken = responseString.Split(new Char[] { '=' });
+                            string accessTokenString = splitAccessToken.GetValue(0).ToString();
+                            string accessTokenValue = splitAccessToken.GetValue(1).ToString();
+                            if (accessTokenString == "access_token")
+                            {
+                                AccessToken = accessTokenValue;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
 
-            //do whatever with the response 
+            }
+            GetAccessToken();
+        }
 
-            streamResponse.Close();
-            streamRead.Close();
-
-            response.Close();
+        void GetAccessToken()
+        {
+            Deployment.Current.Dispatcher.BeginInvoke(() =>
+            {
+                if (string.IsNullOrEmpty(AccessToken))
+                {
+                    MessageBox.Show("AccessToken not valid");
+                }
+                else
+                {
+                    MessageBox.Show("AccessToken= " + AccessToken);
+                    //LoadUserProfile();
+                }
+            });
         }
     }
 }
