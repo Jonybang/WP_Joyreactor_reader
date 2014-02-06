@@ -19,6 +19,11 @@ namespace Mudactor
 {
     public partial class MainPage : PhoneApplicationPage
     {
+        NetworkCredential credentials = new NetworkCredential("<user>", "<password>", "<domain>");
+        HttpWebRequest request = CreateWebRequest("<url>/_vti_bin/Webs.asmx", credentials);
+        XDocument soapEnvelope = CreateSoapEnvelope("<GetWebCollection xmlns=\"http://schemas.microsoft.com/sharepoint/soap/\" />");
+        static string soapEnvelope = @"<soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'><soap:Body></soap:Body></soap:Envelope>";
+
         // Конструктор
         public MainPage()
         {
@@ -27,7 +32,7 @@ namespace Mudactor
             // Задайте для контекста данных элемента управления listbox пример данных
             DataContext = App.ViewModel;
             this.Loaded += new RoutedEventHandler(MainPage_Loaded);
-
+            InsertSoapEnvelopeIntoWebRequest(soapEnvelope, request);
         }
 
         // Загрузка данных для элементов ViewModel
@@ -35,52 +40,57 @@ namespace Mudactor
         {
 
         }
-        private static async void MakeRequest()
+        private static HttpWebRequest CreateWebRequest(string url, NetworkCredential credentials)
         {
-            await UseHttpClient();
-            UseWebClient();
+            string action = "http://schemas.microsoft.com/sharepoint/soap/GetWebCollection";
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(url);
+            req.Credentials = credentials;
+            req.Headers["SOAPAction"] = action;
+            req.ContentType = "text/xml;charset=\"utf-8\"";
+            req.Accept = "text/xml";
+            req.Method = "POST";
+            return req;
         }
 
-        private static async Task UseHttpClient()
+        
+
+        private static XDocument CreateSoapEnvelope(string content)
         {
-            Console.WriteLine("=== HttpClient ==");
-            var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Get, new Uri("http://www.google.com"));
-            Console.WriteLine("HttpClient requesting...");
-            var response = await client.SendAsync(request);
-            Console.WriteLine(response.Content.ReadAsStringAsync().Result.Substring(0, 100));
-            Console.WriteLine("HttpClient done");
-            HttpWebRequest myHttpWebRequest =
-   (HttpWebRequest).Create("http://kbyte.ru");
-            myHttpWebRequest.Proxy = new WebProxy("127.0.0.1", 8888);
-            HttpWebResponse myHttpWebResponse =
-              (HttpWebResponse)myHttpWebRequest.GetResponse();
+            StringBuilder sb = new StringBuilder(soapEnvelope);
+            sb.Insert(sb.ToString().IndexOf("</soap:Body>"), content);
+
+            XDocument soapEnvelopeXml = XDocument.Parse(sb.ToString());
+
+            return soapEnvelopeXml;
         }
 
-        private static void UseWebClient()
+        private static void InsertSoapEnvelopeIntoWebRequest(XDocument soapEnvelopeXml, HttpWebRequest webRequest)
         {
-            Console.WriteLine("=== WebClient ==");
-            var webClient = new WebClient();
-            webClient.DownloadStringAsync(new Uri("http://www.google.com"));
-            Console.WriteLine("WebClient requesting...");
-            webClient.DownloadStringCompleted += (sender, eventArgs) => Console.WriteLine(eventArgs.Result.Substring(0, 100));
-            Console.WriteLine("WebClient done.");
-        }
-        public string send(string url, string par)
-        {
-            String secondStepForm3 = par;
-            HttpWebRequest request3 = (HttpWebRequest)WebRequest.Create(url);
-            request3.UserAgent = "Opera/9.80";
-            request3.Method = "POST";
-            request3.ContentType = "application/x-www-form-urlencoded";
-            byte[] EncodedPostParams3 = Encoding.Default.GetBytes(secondStepForm3);
-            request3.ContentLength = EncodedPostParams3.Length;
-            request3.GetRequestStream().Write(EncodedPostParams3, 0, EncodedPostParams3.Length);
-            request3.GetRequestStream().Close();
-            HttpWebResponse response = (HttpWebResponse)request3.GetResponse();
-            string lol = new StreamReader(response.GetResponseStream(), Encoding.UTF8).ReadToEnd();
-            return lol;
+            webRequest.BeginGetRequestStream((IAsyncResult asynchronousResult) =>
+            {
+                HttpWebRequest request = (HttpWebRequest)asynchronousResult.AsyncState;
+                Stream postStream = request.EndGetRequestStream(asynchronousResult);
+                soapEnvelopeXml.Save(postStream);
+                postStream.Close();
+
+                request.BeginGetResponse(new AsyncCallback(GetResponseCallback), request);
+            }, webRequest);
         }
 
+        private static void GetResponseCallback(IAsyncResult asynchronousResult)
+        {
+            HttpWebRequest request = (HttpWebRequest)asynchronousResult.AsyncState;
+            HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(asynchronousResult);
+            Stream streamResponse = response.GetResponseStream();
+            StreamReader streamRead = new StreamReader(streamResponse);
+            string responseString = streamRead.ReadToEnd();
+
+            //do whatever with the response 
+
+            streamResponse.Close();
+            streamRead.Close();
+
+            response.Close();
+        }
     }
 }
